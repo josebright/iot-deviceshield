@@ -4,7 +4,7 @@
 # Build context is the repo root: `docker build -f apps/web/Dockerfile .`
 # ============================================================================
 
-ARG NODE_VERSION=22.11.0
+ARG NODE_VERSION=22.22.2
 
 # ---- Stage 1: base with pnpm -----------------------------------------------
 FROM node:${NODE_VERSION}-alpine AS base

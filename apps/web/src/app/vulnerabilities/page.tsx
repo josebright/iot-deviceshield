@@ -42,7 +42,7 @@ function getColorForSeverity(severity: CvssSeverity | string): string {
   return SEVERITY_COLORS[severity.toLowerCase()] ?? 'primary';
 }
 
-function SeverityGuide(): JSX.Element {
+function SeverityGuide() {
   return (
     <div className={styles.severityGuide}>
       <Grid container>
@@ -62,7 +62,7 @@ function SeverityGuide(): JSX.Element {
   );
 }
 
-function DetailsContent({ deviceName }: { deviceName: string | null }): JSX.Element {
+function DetailsContent({ deviceName }: { deviceName: string | null }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [vulnerabilityData, setVulnerabilityData] = useState<Vulnerability[] | null>(null);
@@ -246,7 +246,7 @@ function DetailsContent({ deviceName }: { deviceName: string | null }): JSX.Elem
   );
 }
 
-export default function Details(): JSX.Element {
+export default function Details() {
   const searchParams = useSearchParams();
   const deviceName = searchParams.get('name');
   return (

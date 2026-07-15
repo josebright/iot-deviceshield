@@ -10,8 +10,11 @@ const nextConfig = {
   // Trace files from the monorepo root so the standalone bundle includes
   // workspace packages (e.g. @iot-deviceshield/types).
   outputFileTracingRoot: join(__dirname, '..', '..'),
-  experimental: {
-    missingSuspenseWithCSRBailout: false,
+  // Skip Next's built-in ESLint step during `next build` — it hits an
+  // ajv-plugin peer mismatch when we override ajv to fix a transitive CVE.
+  // Linting still runs via the separate `pnpm lint` step in CI.
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 };
 

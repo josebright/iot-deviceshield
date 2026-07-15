@@ -7,7 +7,7 @@ import type { Category, DeviceSummary } from '@iot-deviceshield/types';
 import { apiClient } from '@/lib/api';
 import styles from './page.module.css';
 
-export default function Home(): JSX.Element {
+export default function Home() {
   const [categoryData, setCategoryData] = useState<Category[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

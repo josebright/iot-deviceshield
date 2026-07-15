@@ -16,7 +16,7 @@ pnpm dev                  # runs turbo → all workspaces in watch mode
 
 Requirements:
 
-- Node.js **22.11.0** LTS (pinned in `.nvmrc`)
+- Node.js **22.22.2** LTS (pinned in `.nvmrc`)
 - pnpm **10+**
 - Docker + Docker Compose (for `docker:up`)
 

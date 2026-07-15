@@ -7,7 +7,7 @@
   "author": "Uchenna Ugwumadu <jchukwu61@gmail.com>",
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748",
   "engines": {
-    "node": ">=22.11.0",
+    "node": ">=22.22.2",
     "pnpm": ">=10.0.0"
   },
   "scripts": {
@@ -38,5 +38,27 @@
     "*.{md,json,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "pnpm": {
+    "overrideNotes": "Transitive-dependency CVE fixes surfaced by OSV-Scanner in CI. Each entry pins a minimum version that carries the security patch. Re-verify with: osv-scanner --lockfile=pnpm-lock.yaml",
+    "overrides": {
+      "ajv": ">=8.18.0",
+      "eslint>ajv": "^6.14.0",
+      "@eslint/eslintrc>ajv": "^6.14.0",
+      "fast-uri": ">=3.1.2",
+      "file-type": ">=21.3.2",
+      "form-data": ">=4.0.6",
+      "glob": ">=10.5.0",
+      "js-yaml": ">=4.2.0",
+      "lodash": ">=4.17.23",
+      "multer": ">=2.1.1",
+      "picomatch": ">=4.0.4",
+      "postcss": ">=8.5.10",
+      "qs": ">=6.15.2",
+      "tmp": ">=0.2.6",
+      "uuid": ">=11.1.1",
+      "webpack": ">=5.104.1",
+      "yaml": ">=2.8.3"
+    }
   }
 }
