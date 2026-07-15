@@ -4,7 +4,7 @@
 
 | Tool       | Version                 | Install                                                                                       |
 | ---------- | ----------------------- | --------------------------------------------------------------------------------------------- |
-| Node.js    | **22.11.0** LTS ("Jod") | Use [nvm](https://github.com/nvm-sh/nvm): `nvm install && nvm use` picks it up from `.nvmrc`. |
+| Node.js    | **22.22.2** LTS ("Jod") | Use [nvm](https://github.com/nvm-sh/nvm): `nvm install && nvm use` picks it up from `.nvmrc`. |
 | pnpm       | **10+**                 | `corepack enable && corepack prepare pnpm@10.14.0 --activate`                                 |
 | Docker     | 24+                     | Only required for `pnpm docker:up`.                                                           |
 | PostgreSQL | 16                      | Only if you want to run without Docker; otherwise Compose provides it.                        |

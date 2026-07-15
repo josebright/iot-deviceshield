@@ -4,7 +4,7 @@
 # Build context is the repo root: `docker build -f apps/web/Dockerfile .`
 # ============================================================================
 
-ARG NODE_VERSION=22.11.0
+ARG NODE_VERSION=22.22.2
 
 # ---- Stage 1: base with pnpm -----------------------------------------------
 FROM node:${NODE_VERSION}-alpine AS base
@@ -39,8 +39,13 @@ RUN pnpm --filter @iot-deviceshield/types build \
 
 # ---- Stage 4: runtime -------------------------------------------------------
 FROM node:${NODE_VERSION}-alpine AS runtime
-RUN apk add --no-cache tini wget \
-  && addgroup -S app && adduser -S app -G app
+# `apk upgrade` picks up patched Alpine OS packages (openssl, libcrypto, etc.)
+# for CVEs Trivy flags on the base image. Removing npm/npx eliminates a large
+# set of CVEs in npm's bundled dependencies — we use pnpm exclusively.
+RUN apk upgrade --no-cache \
+  && apk add --no-cache tini wget \
+  && addgroup -S app && adduser -S app -G app \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3001 \

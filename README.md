@@ -4,7 +4,7 @@
 
 [![CI](https://img.shields.io/badge/ci-pending-lightgrey.svg)](.)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Node](https://img.shields.io/badge/node-22.11%20LTS-brightgreen.svg)](.nvmrc)
+[![Node](https://img.shields.io/badge/node-22.22%20LTS-brightgreen.svg)](.nvmrc)
 
 IoT-DeviceShield helps operators inventory smart-home devices, correlate them with the latest CVEs from the NIST National Vulnerability Database, and generate AI-assisted threat, impact, and remediation guidance per finding.
 
