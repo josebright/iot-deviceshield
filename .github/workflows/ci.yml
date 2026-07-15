@@ -89,7 +89,7 @@ jobs:
         # first so the Security tab shows what to fix.
         run: |
           set +e
-          osv-scanner scan source \
+          osv-scanner \
             --lockfile=pnpm-lock.yaml \
             --format=sarif \
             --output=osv-results.sarif
