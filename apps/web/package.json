@@ -14,22 +14,22 @@
   },
   "dependencies": {
     "@iot-deviceshield/types": "workspace:*",
-    "@emotion/react": "11.13.3",
-    "@emotion/styled": "11.13.0",
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.1",
     "@mui/icons-material": "6.1.6",
-    "@mui/material": "6.1.6",
-    "next": "14.2.18",
+    "@mui/material": "6.5.0",
+    "next": "14.2.35",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@iot-deviceshield/eslint-config": "workspace:*",
     "@iot-deviceshield/tsconfig": "workspace:*",
-    "@types/node": "20.17.6",
+    "@types/node": "20.19.43",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "eslint": "8.57.1",
-    "eslint-config-next": "14.2.18",
-    "typescript": "5.6.3"
+    "eslint-config-next": "14.2.35",
+    "typescript": "5.9.3"
   }
 }
