@@ -68,8 +68,8 @@ pnpm docker:down         # tear down + wipe volumes
 
 This project evolved from two university-thesis repositories consolidated and hardened into a production-grade platform:
 
-- **[cve-vulnerability-api](https://github.com/<your-org>/cve-vulnerability-api)** — the original NestJS backend
-- **[shd-risk-assessment](https://github.com/<your-org>/shd-risk-assessment)** — the original Next.js dashboard
+- **[cve-vulnerability-api](https://github.com/josebright/smart-home-vulnerabilities)** — the original NestJS backend
+- **[shd-risk-assessment](https://github.com/josebright/shd-risk-assessment)** — the original Next.js dashboard
 
 The rewrite consolidates both under one monorepo with shared types, adds authentication, rate limiting, CI/CD, containerization, secret scanning, and observability. Both legacy repos remain public for reference.
 
