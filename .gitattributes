@@ -1,0 +1,19 @@
+# Normalize line endings on checkin. All text files stored as LF in the repo.
+* text=auto eol=lf
+
+# Explicit binary types (don't try to diff or normalize).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+
+# Lockfile: text but never merge — regenerate from package.json changes.
+pnpm-lock.yaml linguist-generated=true
+
+# Generated/vendored — hide from language stats and diffs by default.
+*.min.js linguist-generated=true
+*.min.css linguist-generated=true

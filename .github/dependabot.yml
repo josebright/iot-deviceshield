@@ -1,0 +1,84 @@
+version: 2
+updates:
+  # Root workspace + Turbo + Prettier
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    groups:
+      dev-tooling:
+        patterns:
+          - 'turbo'
+          - 'prettier'
+          - 'husky'
+          - 'lint-staged'
+          - 'typescript'
+
+  # API workspace
+  - package-ecosystem: npm
+    directory: '/apps/api'
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      nest:
+        patterns:
+          - '@nestjs/*'
+      security:
+        patterns:
+          - 'helmet'
+          - 'argon2'
+          - '@nestjs/jwt'
+          - '@nestjs/passport'
+          - 'passport*'
+
+  # Web workspace
+  - package-ecosystem: npm
+    directory: '/apps/web'
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      next:
+        patterns:
+          - 'next'
+          - 'eslint-config-next'
+      mui:
+        patterns:
+          - '@mui/*'
+          - '@emotion/*'
+
+  # Shared packages
+  - package-ecosystem: npm
+    directory: '/packages/types'
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: '/packages/eslint-config'
+    schedule:
+      interval: weekly
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  # Docker base images
+  - package-ecosystem: docker
+    directory: '/apps/api'
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: '/apps/web'
+    schedule:
+      interval: weekly

@@ -1,0 +1,30 @@
+# Auto-generated / vendor
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+node_modules/
+.pnp.*
+.yarn/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# Sentry / observability tooling artifacts
+.sentry/
+
+# CI/CD generated
+.github/**/README.md
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store

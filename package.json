@@ -1,0 +1,42 @@
+{
+  "name": "iot-deviceshield",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Smart Home Device vulnerability & risk assessment platform. NestJS API + Next.js dashboard, hardened for production.",
+  "license": "MIT",
+  "author": "Uchenna Ugwumadu <jchukwu61@gmail.com>",
+  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748",
+  "engines": {
+    "node": ">=22.11.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json,yml,yaml}\" --ignore-path .gitignore --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md,json,yml,yaml}\" --ignore-path .gitignore --ignore-path .prettierignore",
+    "docker:up": "docker compose --env-file .env -f infra/docker/docker-compose.yml up --build",
+    "docker:down": "docker compose --env-file .env -f infra/docker/docker-compose.yml down -v",
+    "docker:logs": "docker compose --env-file .env -f infra/docker/docker-compose.yml logs -f",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "turbo": "^2.2.3",
+    "typescript": "^5.6.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write"
+    ],
+    "*.{md,json,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

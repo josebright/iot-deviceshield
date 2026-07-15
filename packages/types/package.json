@@ -1,0 +1,30 @@
+{
+  "name": "@iot-deviceshield/types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared DTOs and domain types used by the API and web app.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "clean": "rm -rf dist .turbo",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@iot-deviceshield/eslint-config": "workspace:*",
+    "@iot-deviceshield/tsconfig": "workspace:*",
+    "eslint": "^8.57.1",
+    "typescript": "^5.6.3"
+  }
+}
