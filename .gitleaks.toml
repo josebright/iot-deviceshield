@@ -1,6 +1,9 @@
 # Gitleaks configuration for iot-deviceshield.
 # Extends the built-in ruleset (which covers AWS/GCP/Azure/Slack/GitHub/etc.)
 # and adds project-specific rules and allowlists.
+#
+# Gitleaks uses Go's `re2` regex engine — NO lookaheads/lookbehinds/backrefs.
+# Use rule-level allowlists to exclude known-safe placeholders instead.
 
 [extend]
 useDefault = true
@@ -11,24 +14,42 @@ description = "OpenAI API key"
 regex = '''sk-(proj-)?[A-Za-z0-9_-]{20,}'''
 tags = ["openai", "key"]
 
+  [rules.allowlist]
+  description = "Known-safe OpenAI-shaped placeholders in example env files and unit tests."
+  regexes = [
+    '''sk-your-key-here''',
+    '''sk-test''',
+    '''sk-\*+''',
+  ]
+
 [[rules]]
 id = "jwt-secret-in-env"
-description = "JWT secret set to a non-placeholder value inside a committed env file"
-regex = '''(?i)JWT_SECRET\s*=\s*(?!replace-|change-|your-)([A-Za-z0-9/+=_-]{20,})'''
+description = "JWT secret set to a real value inside a committed env file"
+regex = '''(?i)JWT_SECRET\s*=\s*[A-Za-z0-9/+=_-]{20,}'''
 tags = ["jwt", "secret"]
-path = '''\.env($|\.)'''
+path = '''\.env($|\..*)'''
 
+  [rules.allowlist]
+  description = "Common placeholder prefixes in .env.example templates."
+  regexes = [
+    '''JWT_SECRET\s*=\s*replace-''',
+    '''JWT_SECRET\s*=\s*change-''',
+    '''JWT_SECRET\s*=\s*your-''',
+    '''JWT_SECRET\s*=\s*example-''',
+    '''JWT_SECRET\s*=\s*placeholder-''',
+  ]
+
+# Global allowlist for known-safe fixtures, docs, and generated files.
 [allowlist]
-description = "Global allowlist for known-safe fixtures and docs."
+description = "Repository-wide allowlist."
 paths = [
-  '''(^|/).env.example$''',
+  '''(^|/)\.env\.example$''',
   '''(^|/)README\.md$''',
   '''(^|/)docs/''',
   '''(^|/)pnpm-lock\.yaml$''',
+  '''(^|/)\.gitleaks\.toml$''',
 ]
 regexes = [
-  # Well-known Postgres example creds only used in local dev / examples.
+  # Well-known Postgres example creds used in local dev / .env.example only.
   '''DB_PASSWORD=change-me-in-real-env''',
-  '''JWT_SECRET=replace-with-.*''',
-  '''OPENAI_API_KEY=sk-your-key-here''',
 ]
