@@ -12,7 +12,7 @@
 ## Fastest path: full stack via Docker
 
 ```bash
-git clone https://github.com/<your-org>/iot-deviceshield.git
+git clone https://github.com/josebright/iot-deviceshield.git
 cd iot-deviceshield
 cp .env.example .env
 # open .env and set DB_PASSWORD, JWT_SECRET (>=32 chars), OPENAI_API_KEY

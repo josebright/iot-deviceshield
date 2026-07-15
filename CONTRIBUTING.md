@@ -5,7 +5,7 @@ Thanks for taking the time to contribute! This document covers the workflow, cod
 ## Getting set up
 
 ```bash
-git clone https://github.com/<your-org>/iot-deviceshield.git
+git clone https://github.com/josebright/iot-deviceshield.git
 cd iot-deviceshield
 cp .env.example .env      # fill in real values
 pnpm install

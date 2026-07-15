@@ -11,7 +11,7 @@ IoT-DeviceShield helps operators inventory smart-home devices, correlate them wi
 ## Quick start
 
 ```bash
-git clone https://github.com/<your-org>/iot-deviceshield.git
+git clone https://github.com/josebright/iot-deviceshield.git
 cd iot-deviceshield
 cp .env.example .env      # then fill in DB creds + OPENAI_API_KEY
 pnpm install
