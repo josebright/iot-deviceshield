@@ -63,7 +63,7 @@ import { AuthModule } from './auth/auth.module';
         entities: [Category, Device, Vulnerability, User],
         synchronize: configService.get('NODE_ENV', { infer: true }) !== 'production',
         migrations: [__dirname + '/migrations/*.{js,ts}'],
-        migrationsRun: false,
+        migrationsRun: configService.get('NODE_ENV', { infer: true }) === 'production',
       }),
     }),
     AuthModule,
