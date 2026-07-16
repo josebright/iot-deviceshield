@@ -23,15 +23,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    let message = response.statusText;
-    try {
-      const body = (await response.json()) as { message?: string | string[] };
-      if (body.message) {
-        message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
-      }
-    } catch {
-      // response body was not JSON — fall back to statusText
-    }
+    const body = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
+    const rawMessage = body?.message ?? response.statusText;
+    const message = Array.isArray(rawMessage) ? rawMessage.join(', ') : rawMessage;
     throw new ApiError(message, response.status, path);
   }
 

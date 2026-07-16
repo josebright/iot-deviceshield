@@ -2,10 +2,6 @@ import { randomUUID } from 'node:crypto';
 import type { Params } from 'nestjs-pino';
 import type { Env } from './env.schema';
 
-/**
- * Redact any header, query, or body field that may leak credentials.
- * Extend with care — anything not listed here is logged in full.
- */
 const REDACT_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',

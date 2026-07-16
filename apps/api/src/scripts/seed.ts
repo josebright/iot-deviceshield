@@ -1,12 +1,3 @@
-/**
- * Idempotent demo seed for local development.
- *
- * Usage:
- *   pnpm --filter @iot-deviceshield/api exec ts-node src/scripts/seed.ts
- *
- * Populates a small catalog of smart-home categories + devices.
- * Safe to run repeatedly; existing rows (matched by name) are left alone.
- */
 import { AppDataSource } from '../data-source';
 import { Category } from '../category/entities/category.entity';
 import { Device } from '../devices/entities/device.entity';

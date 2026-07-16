@@ -1,20 +1,6 @@
-# ============================================================================
-# Dependabot configuration for iot-deviceshield.
-#
-# Philosophy:
-#   • Group patch + minor bumps into ONE PR per workspace per week.
-#     Fewer PRs, one merge, one CI run.
-#   • Ignore MAJOR bumps entirely — they need coordinated migration and
-#     should be opened manually or via a security advisory.
-#   • Security PRs (from `dependabot alerts`) always fire regardless of
-#     the `ignore` rules below.
-#   • Keep open-pull-requests-limit low so noise stays manageable.
-# ============================================================================
-
 version: 2
 
 updates:
-  # ---- Root workspace ------------------------------------------------------
   - package-ecosystem: npm
     directory: '/'
     schedule:
@@ -33,7 +19,6 @@ updates:
       - dependency-name: '*'
         update-types: [version-update:semver-major]
 
-  # ---- API workspace -------------------------------------------------------
   - package-ecosystem: npm
     directory: '/apps/api'
     schedule:
@@ -50,7 +35,6 @@ updates:
       - dependency-name: '*'
         update-types: [version-update:semver-major]
 
-  # ---- Web workspace -------------------------------------------------------
   - package-ecosystem: npm
     directory: '/apps/web'
     schedule:
@@ -67,10 +51,6 @@ updates:
       - dependency-name: '*'
         update-types: [version-update:semver-major]
 
-  # ---- Shared packages -----------------------------------------------------
-  # One combined PR across the three /packages workspaces would be nicer, but
-  # Dependabot requires one entry per directory. Kept limits at 1 each so the
-  # combined burst stays manageable.
   - package-ecosystem: npm
     directory: '/packages/types'
     schedule:
@@ -101,9 +81,6 @@ updates:
       - dependency-name: '*'
         update-types: [version-update:semver-major]
 
-  # ---- GitHub Actions ------------------------------------------------------
-  # Group ALL Action bumps (including major) — they rarely break, and
-  # keeping actions current is a security signal in itself.
   - package-ecosystem: github-actions
     directory: '/'
     schedule:
@@ -113,9 +90,6 @@ updates:
       actions:
         patterns: ['*']
 
-  # ---- Docker base images --------------------------------------------------
-  # Ignore MAJOR Node bumps (20 → 22 → 24) — those are Node LTS decisions,
-  # not automated. Patch bumps of the pinned Node version are welcome.
   - package-ecosystem: docker
     directory: '/apps/api'
     schedule:

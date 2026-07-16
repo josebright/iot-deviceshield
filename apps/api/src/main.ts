@@ -1,4 +1,3 @@
-// Sentry MUST be first — it patches globals before any other module loads.
 import './instrument';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

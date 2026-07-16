@@ -25,9 +25,6 @@ export function setupSwagger(app: INestApplication, env: Env, logger: MinimalLog
   const path = 'v1/docs';
 
   if (env.NODE_ENV === 'production') {
-    // Generate a random password each boot if the operator did not set one via
-    // env; the password is logged so infra can grab it, and it rotates on every
-    // restart. This keeps the docs endpoint reachable but not casually indexed.
     const user = process.env.SWAGGER_USER ?? 'admin';
     const password = process.env.SWAGGER_PASSWORD ?? randomBytes(16).toString('base64url');
     app.use(
