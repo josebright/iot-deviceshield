@@ -58,6 +58,10 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/v1}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
+        SENTRY_ORG: ${SENTRY_ORG:-iot-deviceshield}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-iot-deviceshield-frontend}
     image: iot-deviceshield/web:local
     restart: unless-stopped
     depends_on:
@@ -66,6 +70,7 @@ services:
       NODE_ENV: production
       PORT: 3001
       HOSTNAME: 0.0.0.0
+      SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
     ports:
       - '3001:3001'
     security_opt:

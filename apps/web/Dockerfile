@@ -25,7 +25,15 @@ FROM deps AS builder
 COPY packages ./packages
 COPY apps/web ./apps/web
 ARG NEXT_PUBLIC_API_URL=http://localhost:3000/v1
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ARG SENTRY_AUTH_TOKEN=
+ARG SENTRY_ORG=iot-deviceshield
+ARG SENTRY_PROJECT=iot-deviceshield-frontend
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
+    NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN} \
+    SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN} \
+    SENTRY_ORG=${SENTRY_ORG} \
+    SENTRY_PROJECT=${SENTRY_PROJECT}
 RUN pnpm --filter @iot-deviceshield/types build \
  && pnpm --filter @iot-deviceshield/web build
 
