@@ -1,7 +1,3 @@
-/**
- * Mock openai at the module level so the service constructor never tries to
- * reach the real API. This must be declared before `import`ing the service.
- */
 const openAiCreateMock = jest.fn();
 jest.mock('openai', () => {
   return {
@@ -126,12 +122,9 @@ describe('VulnerabilitiesService', () => {
 
     const result = await service.fetchVulnerabilities({ keywordSearch: 'router' });
 
-    // Only the new CVE gets built + saved.
     expect(vulnRepo.create).toHaveBeenCalledTimes(1);
     expect(vulnRepo.save).toHaveBeenCalledTimes(1);
-    // 5 OpenAI prompts per new CVE (threat, recommendation, impact, affected, vuln).
     expect(openAiCreateMock).toHaveBeenCalledTimes(5);
-    // Final response comes from the repository find().
     expect(result).toEqual([{ id: 100 }]);
     expect(vulnRepo.find).toHaveBeenCalledWith({
       where: { device: { id: device.id } },
@@ -154,8 +147,6 @@ describe('VulnerabilitiesService', () => {
     await service.fetchVulnerabilities({ keywordSearch: 'router' });
 
     const created = vulnRepo.create!.mock.calls[0][0];
-    // Every AI-generated field should be an empty string on failure — never
-    // an error message persisted as content (the legacy bug we fixed).
     expect(created.threats).toBe('');
     expect(created.impact).toBe('');
     expect(created.recommendations).toBe('');

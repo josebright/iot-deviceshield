@@ -1,10 +1,3 @@
-# Gitleaks configuration for iot-deviceshield.
-# Extends the built-in ruleset (which covers AWS/GCP/Azure/Slack/GitHub/etc.)
-# and adds project-specific rules and allowlists.
-#
-# Gitleaks uses Go's `re2` regex engine — NO lookaheads/lookbehinds/backrefs.
-# Use rule-level allowlists to exclude known-safe placeholders instead.
-
 [extend]
 useDefault = true
 
@@ -15,7 +8,7 @@ regex = '''sk-(proj-)?[A-Za-z0-9_-]{20,}'''
 tags = ["openai", "key"]
 
   [rules.allowlist]
-  description = "Known-safe OpenAI-shaped placeholders in example env files and unit tests."
+  description = "Known-safe placeholders in example env files and unit tests."
   regexes = [
     '''sk-your-key-here''',
     '''sk-test''',
@@ -30,7 +23,7 @@ tags = ["jwt", "secret"]
 path = '''\.env($|\..*)'''
 
   [rules.allowlist]
-  description = "Common placeholder prefixes in .env.example templates."
+  description = "Placeholder prefixes in .env.example templates."
   regexes = [
     '''JWT_SECRET\s*=\s*replace-''',
     '''JWT_SECRET\s*=\s*change-''',
@@ -39,7 +32,6 @@ path = '''\.env($|\..*)'''
     '''JWT_SECRET\s*=\s*placeholder-''',
   ]
 
-# Global allowlist for known-safe fixtures, docs, and generated files.
 [allowlist]
 description = "Repository-wide allowlist."
 paths = [
@@ -50,6 +42,5 @@ paths = [
   '''(^|/)\.gitleaks\.toml$''',
 ]
 regexes = [
-  # Well-known Postgres example creds used in local dev / .env.example only.
   '''DB_PASSWORD=change-me-in-real-env''',
 ]

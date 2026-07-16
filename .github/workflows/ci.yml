@@ -6,25 +6,18 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel superseded runs for the same PR/branch.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Minimum-privilege default. Individual jobs opt into more when needed.
 permissions:
   contents: read
 
 env:
-  # Silence Turbo telemetry in CI.
   TURBO_TELEMETRY_DISABLED: 1
   NEXT_TELEMETRY_DISABLED: 1
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Fast feedback: lint, typecheck, unit tests, format.
-  # Fans out via Turbo. If any of these fail, the rest of the pipeline is moot.
-  # ---------------------------------------------------------------------------
   quality:
     name: Lint / Typecheck / Test
     runs-on: ubuntu-latest
@@ -32,8 +25,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # No `with.version` — pnpm/action-setup reads it from package.json#packageManager.
-      # Specifying both is a hard error since action-setup v4.
       - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v7
@@ -56,14 +47,6 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-  # ---------------------------------------------------------------------------
-  # Supply-chain: block PRs that add high/critical CVEs.
-  #
-  # We use Google's OSV-Scanner rather than `pnpm audit` because npm retired
-  # the audit endpoint pnpm hits (all pnpm versions currently 410). OSV-Scanner
-  # reads pnpm-lock.yaml directly and queries the OSV database (which aggregates
-  # GHSA + npm-advisories + others), so it's more comprehensive anyway.
-  # ---------------------------------------------------------------------------
   audit:
     name: OSV-Scanner (supply chain)
     runs-on: ubuntu-latest
@@ -73,8 +56,6 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v7
-      # Install the CLI directly — the action wrapper misparses multi-line
-      # scan-args and does not always write the SARIF on non-zero exit.
       - name: Install OSV-Scanner
         run: |
           OSV_VERSION=1.9.2
@@ -85,8 +66,6 @@ jobs:
           osv-scanner --version
       - name: Run OSV-Scanner (SARIF)
         id: osv
-        # Exit non-zero when findings exist so the job fails, but produce the SARIF
-        # first so the Security tab shows what to fix.
         run: |
           set +e
           osv-scanner \
@@ -96,8 +75,6 @@ jobs:
           scan_exit=$?
           echo "OSV exit code: $scan_exit"
           echo "scan_exit=$scan_exit" >> "$GITHUB_OUTPUT"
-          # Always exit 0 in this step — the CI-gate job below decides pass/fail
-          # after SARIF is uploaded.
           exit 0
       - name: Upload OSV SARIF
         if: always() && hashFiles('osv-results.sarif') != ''
@@ -111,10 +88,6 @@ jobs:
           echo "OSV-Scanner reported vulnerabilities — see the Security tab (category: osv-scanner)."
           exit 1
 
-  # ---------------------------------------------------------------------------
-  # SAST via Semgrep (OWASP Top 10 + framework rulesets).
-  # Uploads SARIF to the GitHub Security tab.
-  # ---------------------------------------------------------------------------
   semgrep:
     name: Semgrep SAST
     runs-on: ubuntu-latest
@@ -127,9 +100,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Run Semgrep
-        # We invoke the CLI directly rather than an action so the pipeline
-        # doesn't break the next time Semgrep rebrands their action org.
-        # `--error` bubbles findings up as a non-zero exit; SARIF still writes.
         run: |
           semgrep \
             --config=p/typescript \
@@ -148,10 +118,6 @@ jobs:
           sarif_file: semgrep.sarif
           category: semgrep
 
-  # ---------------------------------------------------------------------------
-  # Secret scanning on every push. Runs on full history for pushes to main,
-  # and on the PR diff for pull requests.
-  # ---------------------------------------------------------------------------
   gitleaks:
     name: Gitleaks secret scan
     runs-on: ubuntu-latest
@@ -165,9 +131,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
 
-  # ---------------------------------------------------------------------------
-  # CodeQL — GitHub-native SAST, deep semantic queries for TS/JS.
-  # ---------------------------------------------------------------------------
   codeql:
     name: CodeQL
     runs-on: ubuntu-latest
@@ -187,10 +150,6 @@ jobs:
           queries: security-and-quality
       - uses: github/codeql-action/analyze@v4
 
-  # ---------------------------------------------------------------------------
-  # Build container images, then Trivy-scan them for OS + language CVEs.
-  # Fails the build on HIGH or CRITICAL findings.
-  # ---------------------------------------------------------------------------
   containers:
     name: Build & Trivy scan (${{ matrix.app }})
     runs-on: ubuntu-latest
@@ -236,9 +195,6 @@ jobs:
           sarif_file: trivy-${{ matrix.app }}.sarif
           category: trivy-${{ matrix.app }}
 
-  # ---------------------------------------------------------------------------
-  # Convenience gate — one status check to require in branch protection.
-  # ---------------------------------------------------------------------------
   ci-gate:
     name: CI gate
     runs-on: ubuntu-latest

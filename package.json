@@ -40,7 +40,6 @@
     ]
   },
   "pnpm": {
-    "overrideNotes": "Transitive-dependency CVE fixes surfaced by OSV-Scanner in CI. Each entry pins a minimum version that carries the security patch. Re-verify with: osv-scanner --lockfile=pnpm-lock.yaml",
     "overrides": {
       "ajv": ">=8.18.0",
       "eslint>ajv": "^6.14.0",

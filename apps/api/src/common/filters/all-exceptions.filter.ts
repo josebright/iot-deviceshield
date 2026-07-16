@@ -13,9 +13,6 @@ import type { Request, Response } from 'express';
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
-  // The @SentryExceptionCaptured() decorator forwards the exception to Sentry
-  // BEFORE our body runs. When SENTRY_DSN is unset, Sentry.init was never
-  // called and this is a no-op — no configuration branch needed here.
   @SentryExceptionCaptured()
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();

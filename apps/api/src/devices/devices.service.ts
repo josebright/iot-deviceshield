@@ -15,7 +15,6 @@ export class DevicesService {
   ) {}
 
   async create(createDeviceDto: CreateDeviceDto): Promise<Device> {
-    // Check if the category exists
     const category = await this.categoryRepository.findOne({
       where: { id: createDeviceDto.categoryId },
     });

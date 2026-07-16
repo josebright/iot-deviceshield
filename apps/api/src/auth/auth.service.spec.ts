@@ -1,6 +1,3 @@
-/**
- * Mock argon2 at the module level to keep tests fast and deterministic.
- */
 jest.mock('argon2', () => ({
   __esModule: true,
   argon2id: 2,

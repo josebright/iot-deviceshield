@@ -1,32 +1,26 @@
-# Dependencies
 node_modules/
 .pnp
 .pnp.js
 .yarn/install-state.gz
 
-# Build output
 dist/
 build/
 .next/
 out/
 *.tsbuildinfo
 
-# Turbo
 .turbo/
 
-# Testing
 coverage/
 .nyc_output/
 playwright-report/
 test-results/
 
-# Env & secrets
 .env
 .env.local
 .env.*.local
 !.env.example
 
-# Logs
 logs/
 *.log
 npm-debug.log*
@@ -35,7 +29,6 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# IDEs
 .idea/
 .vscode/*
 !.vscode/settings.json
@@ -47,32 +40,25 @@ lerna-debug.log*
 .settings/
 *.sublime-workspace
 
-# OS
 .DS_Store
 Thumbs.db
 
-# Next.js
 next-env.d.ts
 
-# Vercel
 .vercel
 
-# Docker / infra state
 infra/terraform/.terraform/
 infra/terraform/*.tfstate
 infra/terraform/*.tfstate.backup
 infra/terraform/*.tfvars
 !infra/terraform/*.tfvars.example
 
-# Diagnostic reports
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Runtime data
 pids
 *.pid
 *.seed
 *.pid.lock
 
-# Temp
 .temp/
 .tmp/
