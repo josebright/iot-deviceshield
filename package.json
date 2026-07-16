@@ -22,6 +22,7 @@
     "docker:up": "docker compose --env-file .env -f infra/docker/docker-compose.yml up --build",
     "docker:down": "docker compose --env-file .env -f infra/docker/docker-compose.yml down -v",
     "docker:logs": "docker compose --env-file .env -f infra/docker/docker-compose.yml logs -f",
+    "docker:rebuild": "docker compose --env-file .env -f infra/docker/docker-compose.yml down && docker compose --env-file .env -f infra/docker/docker-compose.yml build --no-cache && docker compose --env-file .env -f infra/docker/docker-compose.yml up -d",
     "prepare": "husky || true"
   },
   "devDependencies": {
