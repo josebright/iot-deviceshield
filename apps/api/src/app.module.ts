@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -20,6 +21,10 @@ import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
+    // SentryModule must load early so its interceptors/context wrap request
+    // handlers. `Sentry.init()` itself is called in `instrument.ts`, which
+    // is the first import in `main.ts`.
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
