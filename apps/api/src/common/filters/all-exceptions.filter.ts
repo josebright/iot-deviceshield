@@ -6,13 +6,17 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import * as Sentry from '@sentry/node';
+import { SentryExceptionCaptured } from '@sentry/nestjs';
 import type { Request, Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  // The @SentryExceptionCaptured() decorator forwards the exception to Sentry
+  // BEFORE our body runs. When SENTRY_DSN is unset, Sentry.init was never
+  // called and this is a no-op — no configuration branch needed here.
+  @SentryExceptionCaptured()
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -40,10 +44,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `${request.method} ${request.url} -> ${status}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
-      // No-op if Sentry.init was never called (i.e., SENTRY_DSN unset).
-      Sentry.captureException(exception, {
-        tags: { path: request.url, method: request.method },
-      });
     } else {
       this.logger.warn(`${request.method} ${request.url} -> ${status}: ${JSON.stringify(message)}`);
     }
