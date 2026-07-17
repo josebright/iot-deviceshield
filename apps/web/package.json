@@ -18,6 +18,8 @@
     "@iot-deviceshield/types": "workspace:*",
     "@mui/icons-material": "6.5.0",
     "@mui/material": "6.5.0",
+    "@mui/material-nextjs": "^9.1.1",
+    "@mui/system": "^9.2.0",
     "@sentry/nextjs": "^10.66.0",
     "next": "15.5.20",
     "react": "19.2.7",

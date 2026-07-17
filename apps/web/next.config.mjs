@@ -19,7 +19,11 @@ export default withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT ?? 'iot-deviceshield-frontend',
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  disableLogger: true,
   tunnelRoute: '/monitoring',
-  automaticVercelMonitors: false,
+  webpack: {
+    automaticVercelMonitors: false,
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
 });

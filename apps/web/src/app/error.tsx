@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Button } from '@mui/material';
+import * as Sentry from '@sentry/nextjs';
+import { Button, Stack, Typography } from '@mui/material';
+import ReplayOutlined from '@mui/icons-material/ReplayOutlined';
+import { PageShell } from '@/components/PageShell';
 
 export default function Error({
   error,
@@ -11,27 +14,36 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
-    <main
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '80vh',
-        padding: '2rem',
-        textAlign: 'center',
-      }}
-    >
-      <h1>Something went wrong</h1>
-      <p>The dashboard hit an unexpected error. If this keeps happening, please contact support.</p>
-      {error.digest ? <p style={{ opacity: 0.6 }}>Reference: {error.digest}</p> : null}
-      <Button variant="contained" onClick={() => reset()} style={{ marginTop: '1rem' }}>
-        Try again
-      </Button>
-    </main>
+    <PageShell>
+      <Stack
+        spacing={2}
+        sx={{ maxWidth: 560, mx: 'auto', textAlign: 'center', py: { xs: 6, md: 10 } }}
+      >
+        <Typography variant="caption" color="error.main" sx={{ letterSpacing: '0.1em' }}>
+          SOMETHING WENT WRONG
+        </Typography>
+        <Typography variant="h1">We hit an unexpected error</Typography>
+        <Typography variant="body1" color="text.secondary">
+          The dashboard could not render this page. Our team has been notified.
+        </Typography>
+        {error.digest ? (
+          <Typography variant="caption" color="text.secondary">
+            Reference: {error.digest}
+          </Typography>
+        ) : null}
+        <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mt: 2 }}>
+          <Button variant="contained" startIcon={<ReplayOutlined />} onClick={() => reset()}>
+            Try again
+          </Button>
+          <Button variant="outlined" href="/">
+            Back to home
+          </Button>
+        </Stack>
+      </Stack>
+    </PageShell>
   );
 }
