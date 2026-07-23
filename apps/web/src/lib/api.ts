@@ -1,5 +1,6 @@
-import type { Category, Vulnerability } from '@iot-deviceshield/types';
+import type { Category, VulnerabilityResponse } from '@iot-deviceshield/types';
 import { env } from './env';
+import { getClientId } from './client-id';
 
 class ApiError extends Error {
   constructor(
@@ -14,10 +15,12 @@ class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${env.apiUrl}${path}`;
+  const clientId = getClientId();
   const response = await fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(clientId ? { 'X-Client-Id': clientId } : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -36,8 +39,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const apiClient = {
   getCategories: (): Promise<Category[]> => request<Category[]>('/category'),
-  getVulnerabilities: (deviceName: string): Promise<Vulnerability[]> =>
-    request<Vulnerability[]>(`/vulnerabilities?keywordSearch=${encodeURIComponent(deviceName)}`),
+  getVulnerabilities: (deviceName: string): Promise<VulnerabilityResponse> =>
+    request<VulnerabilityResponse>(`/vulnerabilities?name=${encodeURIComponent(deviceName)}`),
 };
 
 export { ApiError };

@@ -16,6 +16,7 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/types/package.json ./packages/types/
+COPY packages/catalog/package.json ./packages/catalog/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 RUN --mount=type=cache,target=/pnpm-store \

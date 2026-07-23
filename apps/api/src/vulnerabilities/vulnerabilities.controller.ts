@@ -1,17 +1,39 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { VulnerabilitiesService } from './vulnerabilities.service';
-import { FetchVulnerabilitiesDto } from './dto/fetch-vulnerability.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+class FetchVulnerabilitiesQueryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  slug?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  keywordSearch?: string;
+}
 
 @Controller('vulnerabilities')
-@UseGuards(JwtAuthGuard)
 export class VulnerabilitiesController {
   constructor(private readonly vulnerabilitiesService: VulnerabilitiesService) {}
 
   @Get()
   @Throttle({ strict: { limit: 10, ttl: 60_000 } })
-  getAllVulnerabilities(@Query() query: FetchVulnerabilitiesDto) {
-    return this.vulnerabilitiesService.fetchVulnerabilities(query);
+  async getAll(@Query() query: FetchVulnerabilitiesQueryDto) {
+    if (query.slug) {
+      return this.vulnerabilitiesService.fetchByDeviceSlug(query.slug);
+    }
+    const name = query.name ?? query.keywordSearch;
+    if (!name) {
+      throw new Error('Provide slug, name, or keywordSearch');
+    }
+    return this.vulnerabilitiesService.fetchByDeviceName(name);
   }
 }

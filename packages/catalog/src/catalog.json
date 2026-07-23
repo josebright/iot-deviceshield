@@ -1,0 +1,167 @@
+{
+  "version": "2026.07.17",
+  "updatedAt": "2026-07-17",
+  "categories": [
+    {
+      "slug": "cameras",
+      "name": "Cameras",
+      "description": "Indoor and outdoor smart security cameras",
+      "devices": [
+        {
+          "slug": "google-nest-cam",
+          "name": "Google Nest Cam",
+          "vendor": "google",
+          "product": "nest_cam",
+          "cpeHint": "google nest cam"
+        },
+        {
+          "slug": "wyze-cam-v3",
+          "name": "Wyze Cam v3",
+          "vendor": "wyze",
+          "product": "cam_v3",
+          "cpeHint": "wyze cam v3"
+        },
+        {
+          "slug": "arlo-pro-4",
+          "name": "Arlo Pro 4",
+          "vendor": "arlo",
+          "product": "pro_4",
+          "cpeHint": "arlo pro 4"
+        },
+        {
+          "slug": "ring-indoor-cam",
+          "name": "Ring Indoor Cam",
+          "vendor": "ring",
+          "product": "indoor_cam",
+          "cpeHint": "ring indoor cam"
+        },
+        {
+          "slug": "eufy-security-cam-2",
+          "name": "Eufy Security Cam 2",
+          "vendor": "eufy",
+          "product": "security_cam_2",
+          "cpeHint": "eufy security cam 2"
+        }
+      ]
+    },
+    {
+      "slug": "speakers",
+      "name": "Smart Speakers",
+      "description": "Voice-assistant smart speakers",
+      "devices": [
+        {
+          "slug": "amazon-echo-dot",
+          "name": "Amazon Echo Dot",
+          "vendor": "amazon",
+          "product": "echo_dot",
+          "cpeHint": "amazon echo dot"
+        },
+        {
+          "slug": "google-nest-mini",
+          "name": "Google Nest Mini",
+          "vendor": "google",
+          "product": "nest_mini",
+          "cpeHint": "google nest mini"
+        },
+        {
+          "slug": "sonos-one",
+          "name": "Sonos One",
+          "vendor": "sonos",
+          "product": "one",
+          "cpeHint": "sonos one"
+        },
+        {
+          "slug": "apple-homepod-mini",
+          "name": "Apple HomePod mini",
+          "vendor": "apple",
+          "product": "homepod_mini",
+          "cpeHint": "apple homepod mini"
+        }
+      ]
+    },
+    {
+      "slug": "thermostats",
+      "name": "Thermostats",
+      "description": "Learning and smart thermostats",
+      "devices": [
+        {
+          "slug": "google-nest-learning-thermostat",
+          "name": "Google Nest Learning Thermostat",
+          "vendor": "google",
+          "product": "nest_learning_thermostat",
+          "cpeHint": "google nest learning thermostat"
+        },
+        {
+          "slug": "ecobee-smartthermostat",
+          "name": "ecobee SmartThermostat",
+          "vendor": "ecobee",
+          "product": "smartthermostat",
+          "cpeHint": "ecobee smartthermostat"
+        },
+        {
+          "slug": "honeywell-t9",
+          "name": "Honeywell T9",
+          "vendor": "honeywell",
+          "product": "t9",
+          "cpeHint": "honeywell t9"
+        }
+      ]
+    },
+    {
+      "slug": "locks",
+      "name": "Smart Locks",
+      "description": "Connected door locks with app or keypad access",
+      "devices": [
+        {
+          "slug": "august-wifi-smart-lock",
+          "name": "August Wi-Fi Smart Lock",
+          "vendor": "august",
+          "product": "wifi_smart_lock",
+          "cpeHint": "august wi-fi smart lock"
+        },
+        {
+          "slug": "yale-assure-lock-2",
+          "name": "Yale Assure Lock 2",
+          "vendor": "yale",
+          "product": "assure_lock_2",
+          "cpeHint": "yale assure lock 2"
+        },
+        {
+          "slug": "schlage-encode",
+          "name": "Schlage Encode",
+          "vendor": "schlage",
+          "product": "encode",
+          "cpeHint": "schlage encode"
+        }
+      ]
+    },
+    {
+      "slug": "routers",
+      "name": "Wi-Fi Routers",
+      "description": "Consumer Wi-Fi routers commonly deployed in smart homes",
+      "devices": [
+        {
+          "slug": "asus-rt-ax88u",
+          "name": "ASUS RT-AX88U",
+          "vendor": "asus",
+          "product": "rt-ax88u",
+          "cpeHint": "asus rt-ax88u"
+        },
+        {
+          "slug": "netgear-nighthawk-rax50",
+          "name": "Netgear Nighthawk RAX50",
+          "vendor": "netgear",
+          "product": "rax50",
+          "cpeHint": "netgear rax50"
+        },
+        {
+          "slug": "tp-link-archer-ax50",
+          "name": "TP-Link Archer AX50",
+          "vendor": "tp-link",
+          "product": "archer_ax50",
+          "cpeHint": "tp-link archer ax50"
+        }
+      ]
+    }
+  ]
+}

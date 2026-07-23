@@ -4,9 +4,11 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
+  Alert,
   Box,
   Breadcrumbs,
   Button,
+  Chip,
   IconButton,
   InputAdornment,
   Paper,
@@ -25,7 +27,7 @@ import {
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
-import type { Vulnerability } from '@iot-deviceshield/types';
+import type { Vulnerability, VulnerabilityResponse } from '@iot-deviceshield/types';
 import { apiClient } from '@/lib/api';
 import { PageShell } from '@/components/PageShell';
 import { SkeletonTable } from '@/components/skeletons';
@@ -50,40 +52,43 @@ function Summary({ items }: { items: Vulnerability[] }) {
   }, [items]);
 
   const total = items.length;
+  const order = ['critical', 'high', 'medium', 'low', 'none'] as const;
+  const nonZero = order.filter((k) => (counts[k] ?? 0) > 0);
+  const shown = nonZero.length > 0 ? nonZero : (['none'] as const);
 
   return (
     <Paper sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }}>
-        <Stack spacing={0.5} sx={{ minWidth: 140 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '0.1em' }}>
-            FINDINGS
-          </Typography>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={{ xs: 2, md: 4 }}
+        alignItems={{ md: 'center' }}
+        justifyContent="space-between"
+      >
+        <Stack direction="row" spacing={1.5} alignItems="baseline">
           <Typography variant="h2" sx={{ fontWeight: 700, lineHeight: 1 }}>
             {total}
           </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {total === 1 ? 'finding' : 'findings'}
+          </Typography>
         </Stack>
-        <Box sx={{ flex: 1 }} />
         <Stack
           direction="row"
-          spacing={1}
-          useFlexGap
+          gap={{ xs: 1, md: 1.5 }}
           flexWrap="wrap"
-          divider={
-            <Box
-              sx={{
-                width: 1,
-                height: 24,
-                backgroundColor: 'divider',
-                display: { xs: 'none', md: 'block' },
-              }}
-            />
-          }
           alignItems="center"
           role="list"
           aria-label="Severity summary"
         >
-          {(['critical', 'high', 'medium', 'low', 'none'] as const).map((k) => (
-            <Stack key={k} direction="row" spacing={1} alignItems="center" role="listitem">
+          {shown.map((k) => (
+            <Stack
+              key={k}
+              direction="row"
+              spacing={0.75}
+              alignItems="center"
+              role="listitem"
+              sx={{ minHeight: 28 }}
+            >
               <SeverityBadge severity={k} showLabel />
               <Typography variant="body2" fontWeight={600}>
                 {counts[k] ?? 0}
@@ -96,11 +101,23 @@ function Summary({ items }: { items: Vulnerability[] }) {
   );
 }
 
+function MatchBanner({ response }: { response: VulnerabilityResponse }) {
+  if (response.matchSource === 'cpe') {
+    return null;
+  }
+  return (
+    <Alert severity="info" variant="outlined">
+      Approximate match — no high-confidence CPE identifier was resolved for this device, so results
+      were fetched by keyword search. Precision may vary.
+    </Alert>
+  );
+}
+
 function DetailsContent({ deviceName }: { deviceName: string | null }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [query, setQuery] = useState('');
-  const [vulnerabilityData, setVulnerabilityData] = useState<Vulnerability[] | null>(null);
+  const [response, setResponse] = useState<VulnerabilityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -117,7 +134,7 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
       try {
         const data = await apiClient.getVulnerabilities(deviceName);
         if (!cancelled) {
-          setVulnerabilityData(data);
+          setResponse(data);
         }
       } catch (error) {
         console.error('Failed to load vulnerabilities', error);
@@ -135,15 +152,14 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
     };
   }, [deviceName, attempt]);
 
+  const items = response?.items ?? [];
+
   const filtered = useMemo(() => {
-    if (!vulnerabilityData) {
-      return [];
-    }
     const q = query.trim().toLowerCase();
     if (!q) {
-      return vulnerabilityData;
+      return items;
     }
-    return vulnerabilityData.filter((v) => {
+    return items.filter((v) => {
       return (
         v.vulnerability?.toLowerCase().includes(q) ||
         v.affectedSystem?.toLowerCase().includes(q) ||
@@ -152,7 +168,7 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
         v.recommendations?.toLowerCase().includes(q)
       );
     });
-  }, [vulnerabilityData, query]);
+  }, [items, query]);
 
   const paged = useMemo(
     () => filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
@@ -187,6 +203,19 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
                   ? `Published CVEs for ${deviceName}, enriched with AI-assisted guidance.`
                   : 'Pick a device on the home page to see its findings.'}
               </Typography>
+              {response ? (
+                <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+                  <Chip
+                    size="small"
+                    label={response.matchSource === 'cpe' ? 'CPE match' : 'Keyword match'}
+                    color={response.matchSource === 'cpe' ? 'success' : 'default'}
+                    variant="outlined"
+                  />
+                  {response.cached ? (
+                    <Chip size="small" label="From cache" variant="outlined" />
+                  ) : null}
+                </Stack>
+              ) : null}
             </Stack>
             <Button
               component={Link}
@@ -214,7 +243,7 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
             description={errorMessage}
             onRetry={() => setAttempt((n) => n + 1)}
           />
-        ) : !vulnerabilityData || vulnerabilityData.length === 0 ? (
+        ) : !response || response.items.length === 0 ? (
           <EmptyState
             title="No findings yet"
             description="No CVEs matched the selected device in the NIST NVD catalogue. Try another device or refresh later."
@@ -222,7 +251,8 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
           />
         ) : (
           <>
-            <Summary items={vulnerabilityData} />
+            <MatchBanner response={response} />
+            <Summary items={response.items} />
 
             <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
               <Stack
@@ -312,7 +342,7 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
                       const severity = metric?.baseSeverity;
                       const rowNumber = page * rowsPerPage + index + 1;
                       return (
-                        <TableRow key={item.id} hover>
+                        <TableRow key={item.cveId ?? `${rowNumber}`} hover>
                           <TableCell scope="row">
                             <Typography variant="body2" color="text.secondary">
                               {rowNumber}

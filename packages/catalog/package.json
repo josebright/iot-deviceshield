@@ -1,0 +1,47 @@
+{
+  "name": "@iot-deviceshield/catalog",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Curated smart-home device catalog: the source of truth for what appears in the picker.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./catalog.json": "./src/catalog.json"
+  },
+  "files": [
+    "dist",
+    "src/catalog.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-json.js",
+    "dev": "tsc -p tsconfig.json --watch",
+    "clean": "rm -rf dist .turbo",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "jest"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@iot-deviceshield/eslint-config": "workspace:*",
+    "@iot-deviceshield/tsconfig": "workspace:*",
+    "@types/jest": "29.5.14",
+    "@types/node": "20.19.43",
+    "eslint": "^8.57.1",
+    "jest": "29.7.0",
+    "ts-jest": "29.4.11",
+    "typescript": "^5.6.3"
+  },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
+    "testEnvironment": "node"
+  }
+}

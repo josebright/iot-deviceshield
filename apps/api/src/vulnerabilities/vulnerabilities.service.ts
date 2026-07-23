@@ -3,79 +3,141 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
-import OpenAI from 'openai';
 import { Repository } from 'typeorm';
-import { Vulnerability } from './entities/vulnerability.entity';
+import type {
+  Vulnerability,
+  VulnerabilityMatchSource,
+  VulnerabilityResponse,
+} from '@iot-deviceshield/types';
 import { Device } from '../devices/entities/device.entity';
-import { FetchVulnerabilitiesDto } from './dto/fetch-vulnerability.dto';
+import { VulnerabilityCache } from './entities/vulnerability-cache.entity';
 import { mapCvssMetric } from './cvss.mapper';
 import type { NvdCve, NvdResponse } from './nist.types';
 import type { Env } from '../config/env.schema';
+import { AiAssistantService, hasAiContent } from './ai-assistant.service';
 
-const NVD_API_URL = 'https://services.nvd.nist.gov/rest/json/cves/2.0';
+const NVD_CVE_URL = 'https://services.nvd.nist.gov/rest/json/cves/2.0';
+const CPE_CONFIDENCE_THRESHOLD = 0.5;
 
 @Injectable()
 export class VulnerabilitiesService {
   private readonly logger = new Logger(VulnerabilitiesService.name);
-  private readonly openAI: OpenAI;
+  private readonly cacheTtlMs: number;
+  private readonly nvdApiKey: string | undefined;
 
   constructor(
     private readonly httpService: HttpService,
-    @InjectRepository(Vulnerability)
-    private readonly vulnerabilityRepository: Repository<Vulnerability>,
     @InjectRepository(Device)
     private readonly deviceRepository: Repository<Device>,
+    @InjectRepository(VulnerabilityCache)
+    private readonly cacheRepository: Repository<VulnerabilityCache>,
+    private readonly aiAssistant: AiAssistantService,
     configService: ConfigService<Env, true>,
   ) {
-    this.openAI = new OpenAI({
-      apiKey: configService.get('OPENAI_API_KEY', { infer: true }),
-    });
+    this.cacheTtlMs = configService.get('CVE_CACHE_MINUTES', { infer: true }) * 60 * 1000;
+    this.nvdApiKey = configService.get('NVD_API_KEY', { infer: true });
   }
 
-  async fetchVulnerabilities(dto: FetchVulnerabilitiesDto): Promise<Vulnerability[]> {
-    const device = await this.deviceRepository.findOne({ where: { name: dto.keywordSearch } });
+  async fetchByDeviceName(name: string): Promise<VulnerabilityResponse> {
+    const device = await this.deviceRepository.findOne({ where: { name } });
     if (!device) {
-      throw new NotFoundException(`No device found with the name: ${dto.keywordSearch}`);
+      throw new NotFoundException(`No device found with the name: ${name}`);
     }
+    return this.fetchForDevice(device);
+  }
+
+  async fetchByDeviceSlug(slug: string): Promise<VulnerabilityResponse> {
+    const device = await this.deviceRepository.findOne({ where: { slug } });
+    if (!device) {
+      throw new NotFoundException(`No device found with slug: ${slug}`);
+    }
+    return this.fetchForDevice(device);
+  }
+
+  private async fetchForDevice(device: Device): Promise<VulnerabilityResponse> {
+    const cached = await this.cacheRepository.findOne({ where: { deviceId: device.id } });
+    if (cached && Date.now() - cached.fetchedAt.getTime() < this.cacheTtlMs) {
+      return this.responseFromCache(device, cached, true);
+    }
+
+    const useCpe =
+      device.cpeName !== null &&
+      device.cpeConfidence !== null &&
+      device.cpeConfidence >= CPE_CONFIDENCE_THRESHOLD;
+    const matchSource: VulnerabilityMatchSource = useCpe ? 'cpe' : 'keyword';
+    const matchQuery = useCpe ? (device.cpeName as string) : device.name;
 
     let response;
     try {
       response = await firstValueFrom(
-        this.httpService.get<NvdResponse>(NVD_API_URL, {
-          params: { keywordSearch: dto.keywordSearch },
+        this.httpService.get<NvdResponse>(NVD_CVE_URL, {
+          params: useCpe ? { cpeName: matchQuery } : { keywordSearch: matchQuery },
+          headers: this.nvdApiKey ? { apiKey: this.nvdApiKey } : undefined,
+          timeout: 20_000,
         }),
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`NIST NVD fetch failed for "${dto.keywordSearch}": ${message}`);
+      this.logger.error(`NIST NVD fetch failed for "${matchQuery}": ${message}`);
+      if (cached) {
+        return this.responseFromCache(device, cached, true);
+      }
       throw new ServiceUnavailableException('Vulnerability feed is unavailable');
     }
 
     const items = response.data.vulnerabilities ?? [];
-    const created: Vulnerability[] = [];
-
+    const built: Vulnerability[] = [];
     for (const item of items) {
-      const existing = await this.vulnerabilityRepository.findOne({
-        where: { cveId: item.cve.id },
-      });
-      if (existing) {
-        continue;
-      }
-      const vuln = await this.buildVulnerability(item.cve, device);
-      created.push(vuln);
+      built.push(await this.buildVulnerability(item.cve));
     }
 
-    if (created.length > 0) {
-      await this.vulnerabilityRepository.save(created);
+    const anyAi = built.some(hasAiContent);
+    const now = new Date();
+
+    if (anyAi) {
+      const entity = cached ?? this.cacheRepository.create({ deviceId: device.id });
+      entity.payload = built;
+      entity.matchSource = matchSource;
+      entity.matchQuery = matchQuery;
+      entity.cpeConfidence = device.cpeConfidence ?? null;
+      entity.fetchedAt = now;
+      await this.cacheRepository.save(entity);
+    } else {
+      this.logger.warn(
+        `Skipping cache write for device ${device.slug}: all AI fields empty (LLM likely rate-limited)`,
+      );
     }
 
-    return this.vulnerabilityRepository.find({
-      where: { device: { id: device.id } },
-      relations: ['device'],
-    });
+    return {
+      deviceSlug: device.slug,
+      deviceName: device.name,
+      matchSource,
+      matchQuery,
+      cpeConfidence: device.cpeConfidence ?? null,
+      fetchedAt: now.toISOString(),
+      cached: false,
+      items: built,
+    };
   }
 
-  private async buildVulnerability(cve: NvdCve, device: Device): Promise<Vulnerability> {
+  private responseFromCache(
+    device: Device,
+    cached: VulnerabilityCache,
+    fromCacheFlag: boolean,
+  ): VulnerabilityResponse {
+    return {
+      deviceSlug: device.slug,
+      deviceName: device.name,
+      matchSource: cached.matchSource,
+      matchQuery: cached.matchQuery,
+      cpeConfidence: cached.cpeConfidence,
+      fetchedAt: cached.fetchedAt.toISOString(),
+      cached: fromCacheFlag,
+      items: cached.payload,
+    };
+  }
+
+  private async buildVulnerability(cve: NvdCve): Promise<Vulnerability> {
     const metricsPayload = cve.metrics ?? {};
     const cvssV3 = metricsPayload.cvssMetricV30 ?? metricsPayload.cvssMetricV31 ?? [];
     const cvssV2 = metricsPayload.cvssMetricV2 ?? [];
@@ -84,62 +146,19 @@ export class VulnerabilitiesService {
     const description =
       cve.descriptions.find((d) => d.lang === 'en')?.value ?? cve.descriptions[0]?.value ?? '';
 
-    const [threats, recommendations, impact, affectedSystem, vulnerability] = await Promise.all([
-      this.generateAssessment(this.threatPrompt(description)),
-      this.generateAssessment(this.recommendationPrompt(description)),
-      this.generateAssessment(this.impactPrompt(description)),
-      this.generateAssessment(this.affectedSystemPrompt(description)),
-      this.generateAssessment(this.vulnerabilityPrompt(description)),
-    ]);
+    const ai = await this.aiAssistant.generate(description);
 
-    return this.vulnerabilityRepository.create({
+    return {
       cveId: cve.id,
-      vulnerability,
+      vulnerability: ai.vulnerability,
       lastModified: cve.lastModified ?? null,
       vulnStatus: cve.vulnStatus ?? null,
-      device,
       references: cve.references.map((r) => r.url),
       metrics,
-      impact,
-      affectedSystem,
-      threats,
-      recommendations,
-    });
-  }
-
-  private async generateAssessment(prompt: string): Promise<string> {
-    try {
-      const response = await this.openAI.chat.completions.create({
-        model: 'gpt-4',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_tokens: 250,
-      });
-      return response.choices[0]?.message.content ?? '';
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`OpenAI call failed: ${message}`);
-      return '';
-    }
-  }
-
-  private threatPrompt(description: string): string {
-    return `Threat is a negative or malicious event that can exploit a vulnerability. From this definition, without starting with the words; "The threat is..." or "In simple terms...". Be concised and state the threat in: "${description}"?`;
-  }
-
-  private impactPrompt(description: string): string {
-    return `Be concised and in layman's terms without starting with the words: "The impact of the vulnerability..." or "The potential impact of the vulnerability..." or "In simple terms...", what is the potential impact in: "${description}"?`;
-  }
-
-  private recommendationPrompt(description: string): string {
-    return `Be concised and in a layman's terms without starting with the "In simple terms..." or "I recommend..." words, provide recommendation for mitigating the threats with the description: ${description}.`;
-  }
-
-  private affectedSystemPrompt(description: string): string {
-    return `Without starting with the words: "In simple terms..." or "The affected systems...", just only list the affected systems in: "${description}".`;
-  }
-
-  private vulnerabilityPrompt(description: string): string {
-    return `Vulnerability is a loophole or weakness in a device that can be exploited. From this definition, without starting with the words; "The vulnerability name is..." or "The device is vulnerable to...". Just give the name of the vulnerability in "${description}".`;
+      impact: ai.impact,
+      affectedSystem: ai.affectedSystem,
+      threats: ai.threats,
+      recommendations: ai.recommendations,
+    };
   }
 }

@@ -17,6 +17,7 @@ COPY turbo.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/types/package.json ./packages/types/
+COPY packages/catalog/package.json ./packages/catalog/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 RUN --mount=type=cache,target=/pnpm-store \
@@ -26,6 +27,7 @@ FROM deps AS builder
 COPY packages ./packages
 COPY apps/api ./apps/api
 RUN pnpm --filter @iot-deviceshield/types build \
+ && pnpm --filter @iot-deviceshield/catalog build \
  && pnpm --filter @iot-deviceshield/api build
 
 RUN pnpm --filter @iot-deviceshield/api deploy --prod --legacy /prod/api
