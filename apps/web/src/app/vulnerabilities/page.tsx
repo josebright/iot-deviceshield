@@ -27,6 +27,11 @@ import {
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined';
 import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
+
+function nvdUrl(cveId: string): string {
+  return `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveId)}`;
+}
 import type { Vulnerability, VulnerabilityResponse } from '@iot-deviceshield/types';
 import { apiClient } from '@/lib/api';
 import { PageShell } from '@/components/PageShell';
@@ -161,6 +166,7 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
     }
     return items.filter((v) => {
       return (
+        v.cveId?.toLowerCase().includes(q) ||
         v.vulnerability?.toLowerCase().includes(q) ||
         v.affectedSystem?.toLowerCase().includes(q) ||
         v.threats?.toLowerCase().includes(q) ||
@@ -267,7 +273,7 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="Search vulnerability, system, threat…"
+                  placeholder="Search CVE, vulnerability, system, threat…"
                   value={query}
                   onChange={(event) => {
                     setQuery(event.target.value);
@@ -307,8 +313,8 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
                 <Table stickyHeader aria-label="Vulnerabilities">
                   <TableHead>
                     <TableRow>
-                      <TableCell scope="col" sx={{ minWidth: 60 }}>
-                        #
+                      <TableCell scope="col" sx={{ minWidth: 150 }}>
+                        CVE
                       </TableCell>
                       <TableCell scope="col" sx={{ minWidth: 120 }}>
                         Severity
@@ -344,9 +350,40 @@ function DetailsContent({ deviceName }: { deviceName: string | null }) {
                       return (
                         <TableRow key={item.cveId ?? `${rowNumber}`} hover>
                           <TableCell scope="row">
-                            <Typography variant="body2" color="text.secondary">
-                              {rowNumber}
-                            </Typography>
+                            {item.cveId ? (
+                              <Tooltip title={`Open ${item.cveId} on NIST NVD in a new tab`} arrow>
+                                <Box
+                                  component="a"
+                                  href={nvdUrl(item.cveId)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    color: 'primary.main',
+                                    textDecoration: 'none',
+                                    '&:hover': { textDecoration: 'underline' },
+                                    '&:focus-visible': {
+                                      outline: '2px solid',
+                                      outlineColor: 'primary.main',
+                                      outlineOffset: 2,
+                                      borderRadius: 1,
+                                    },
+                                  }}
+                                >
+                                  {item.cveId}
+                                  <OpenInNewOutlined sx={{ fontSize: '0.9rem' }} aria-hidden />
+                                </Box>
+                              </Tooltip>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                —
+                              </Typography>
+                            )}
                           </TableCell>
                           <TableCell>
                             <SeverityBadge severity={severity} />
