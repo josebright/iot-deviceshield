@@ -1,31 +1,11 @@
 import { Box, Paper, Stack, Typography } from '@mui/material';
-import ShieldOutlined from '@mui/icons-material/ShieldOutlined';
-import DevicesOtherOutlined from '@mui/icons-material/DevicesOtherOutlined';
-import BoltOutlined from '@mui/icons-material/BoltOutlined';
 import type { Category } from '@iot-deviceshield/types';
 import { fetchCategoriesServer } from '@/lib/server-api';
 import { PageShell } from '@/components/PageShell';
 import { CategoryPicker } from '@/components/CategoryPicker';
 import { EmptyState } from '@/components/EmptyState';
 import { RetryError } from '@/components/RetryError';
-
-const FEATURES = [
-  {
-    icon: DevicesOtherOutlined,
-    title: 'Device inventory',
-    body: 'Track the smart devices on your network across cameras, speakers, thermostats, locks, and routers.',
-  },
-  {
-    icon: ShieldOutlined,
-    title: 'CVE correlation',
-    body: 'Match every device against the NIST National Vulnerability Database as findings publish.',
-  },
-  {
-    icon: BoltOutlined,
-    title: 'AI-assisted guidance',
-    body: 'Plain-language threat, impact, and mitigation notes generated locally per finding.',
-  },
-];
+import { FeaturesGrid } from '@/components/FeaturesGrid';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,44 +74,7 @@ export default async function Home() {
           <Typography id="features-heading" variant="h3" sx={{ mb: 3 }}>
             What you get
           </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gap: 2,
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-              },
-            }}
-          >
-            {FEATURES.map(({ icon: Icon, title, body }) => (
-              <Paper key={title} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
-                <Stack spacing={1.5}>
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 2,
-                      display: 'grid',
-                      placeItems: 'center',
-                      color: 'primary.main',
-                      backgroundColor: (t) =>
-                        t.palette.mode === 'dark'
-                          ? 'rgba(76, 133, 255, 0.14)'
-                          : 'rgba(30, 78, 224, 0.08)',
-                    }}
-                  >
-                    <Icon />
-                  </Box>
-                  <Typography variant="subtitle1">{title}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {body}
-                  </Typography>
-                </Stack>
-              </Paper>
-            ))}
-          </Box>
+          <FeaturesGrid />
         </Box>
       </Stack>
     </PageShell>
