@@ -1,7 +1,8 @@
 import { Container, type ContainerProps } from '@mui/material';
 import type { ReactNode } from 'react';
+import { tokens } from '@/theme/tokens';
 
-const DEFAULT_MAX_PX = 1360;
+const DEFAULT_MAX_PX = tokens.layout.contentMaxWidth;
 
 export function PageShell({
   children,

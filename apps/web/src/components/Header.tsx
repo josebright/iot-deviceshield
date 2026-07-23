@@ -15,6 +15,7 @@ import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
 import Link from 'next/link';
 import { useColorMode } from '@/theme/ColorModeContext';
+import { tokens } from '@/theme/tokens';
 import { Logo } from './Logo';
 
 export function Header() {
@@ -33,7 +34,7 @@ export function Header() {
         borderBottom: `1px solid ${theme.palette.divider}`,
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth={false} sx={{ maxWidth: tokens.layout.contentMaxWidth, mx: 'auto' }}>
         <Toolbar disableGutters sx={{ minHeight: { xs: 56, md: 64 } }}>
           <Stack
             direction="row"
