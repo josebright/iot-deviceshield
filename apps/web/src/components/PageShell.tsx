@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 export function PageShell({
   children,
-  maxWidth = 'lg',
+  maxWidth = 'xl',
   disableGutters,
   sx,
 }: {
