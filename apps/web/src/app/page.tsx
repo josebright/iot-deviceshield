@@ -21,7 +21,7 @@ export default async function Home() {
 
   return (
     <PageShell>
-      <Stack spacing={{ xs: 6, md: 8 }}>
+      <Stack spacing={{ xs: 6, md: 10 }}>
         <Stack spacing={2}>
           <Typography
             variant="caption"
