@@ -1,6 +1,8 @@
 # Contributing to IoT-DeviceShield
 
-Thanks for taking the time to contribute! This document covers the workflow, code standards, and expectations for changes to this repository.
+This is a personal project under the PolyForm Noncommercial 1.0.0 license. Contributions of any size are welcome for personal, research, and educational purposes. If you plan to use this project or a derivative commercially, please reach out first (contact in [LICENSE](LICENSE)).
+
+This document covers the workflow, code standards, and expectations for changes to this repository.
 
 ## Getting set up
 
@@ -49,7 +51,7 @@ Before opening a PR, verify locally:
 - [ ] `pnpm format:check` passes (run `pnpm format` to auto-fix)
 - [ ] If you touched the API surface, both DTOs and any consuming web-app code are updated
 - [ ] If you added a new env var, `.env.example` and `apps/api/src/config/env.schema.ts` are updated
-- [ ] If you touched auth or a public endpoint, the change is called out in the PR description
+- [ ] If you touched a public endpoint or the client fingerprint / throttler logic, call it out in the PR description
 
 CI (`.github/workflows/ci.yml`) additionally runs Semgrep, Gitleaks, CodeQL, Trivy, and `pnpm audit`. All must be green.
 

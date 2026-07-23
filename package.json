@@ -2,8 +2,8 @@
   "name": "iot-deviceshield",
   "version": "0.1.0",
   "private": true,
-  "description": "Smart Home Device vulnerability & risk assessment platform. NestJS API + Next.js dashboard, hardened for production.",
-  "license": "MIT",
+  "description": "Smart-home device vulnerability lookup, backed by NIST NVD data and enriched with a locally-hosted LLM (Qwen 3 via Ollama). NestJS API + Next.js dashboard.",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "Uchenna Ugwumadu <jchukwu61@gmail.com>",
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748",
   "engines": {

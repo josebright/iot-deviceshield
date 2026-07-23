@@ -2,7 +2,9 @@
 
 ## System overview
 
-IoT-DeviceShield is a two-tier application that catalogs smart-home devices, correlates them with CVEs from NIST's National Vulnerability Database, and generates AI-assisted threat / impact / remediation guidance per finding.
+IoT-DeviceShield is a two-tier application that catalogs smart-home devices, correlates them with CVEs from NIST's National Vulnerability Database, and adds a plain-language summary to each finding using a locally-hosted LLM.
+
+Nothing about the AI enrichment leaves your network. The language model runs in a Docker container alongside the API.
 
 ```mermaid
 flowchart LR
@@ -10,180 +12,184 @@ flowchart LR
     subgraph Browser
       Web[Next.js dashboard<br/>apps/web]
     end
-    subgraph Server
+    subgraph LocalStack[Local Docker network]
       API[NestJS API<br/>apps/api<br/>/v1/*]
       PG[(PostgreSQL 16)]
+      Ollama[Ollama<br/>Qwen 2.5 3B]
     end
     subgraph External
       NIST[NIST NVD REST API]
-      OpenAI[OpenAI GPT-4]
       Sentry[Sentry]
     end
 
-    User -->|HTTPS| Web
-    Web -->|JWT / JSON| API
+    User -->|HTTP| Web
+    Web -->|JSON + X-Client-Id| API
     API -->|SQL| PG
     API -->|HTTPS| NIST
-    API -->|HTTPS| OpenAI
-    API -.errors.-> Sentry
+    API -->|HTTP OpenAI-compat| Ollama
+    Web -.errors.-> Sentry
 ```
 
-- **Web** issues browser fetches to the API; it holds a JWT in memory after login.
-- **API** owns all business logic — auth, device inventory, CVE ingestion, AI orchestration, persistence.
-- Shared **`@iot-deviceshield/types`** package holds the interfaces both tiers agree on.
+- **Web** issues browser fetches to the API and attaches a persistent `X-Client-Id` UUID from `localStorage` to every request. No login screen.
+- **API** owns all business logic: catalog sync, CVE lookup, AI enrichment, caching, client fingerprinting, rate limiting.
+- **Ollama** exposes an OpenAI-compatible chat completions endpoint. The API talks to it via the standard `openai` npm client with a redirected `baseURL`.
+- **Shared packages** (`@iot-deviceshield/types`, `@iot-deviceshield/catalog`) hold DTOs and the curated device catalog.
 
 ## Repository layout
 
 ```text
 iot-deviceshield/
 ├── apps/
-│   ├── api/            NestJS 10 + TypeORM + PostgreSQL
-│   └── web/            Next.js 14 App Router + MUI
+│   ├── api/            # NestJS 11 + TypeORM + PostgreSQL
+│   └── web/            # Next.js 15 App Router + React 19 + MUI 6
 ├── packages/
-│   ├── types/          Shared DTOs & domain interfaces
-│   ├── tsconfig/       Strict base + Nest/Next presets
-│   └── eslint-config/  Shared lint rules
+│   ├── types/          # Shared DTOs used by both tiers
+│   ├── catalog/        # Curated device catalog (JSON + Zod schema)
+│   ├── tsconfig/       # Shared TSConfig presets
+│   └── eslint-config/  # Shared ESLint config
 ├── infra/
-│   └── docker/         docker-compose for local dev
-├── docs/               Architecture, setup, API reference
-└── .github/
-    ├── workflows/      CI (lint/test/audit/SAST/scan)
-    └── dependabot.yml
+│   └── docker/         # docker-compose.yml
+├── docs/               # Architecture, setup, security
+└── .github/workflows/  # CI: lint, typecheck, test, security scans
 ```
 
 ## Data model
 
 ```mermaid
 erDiagram
-  USERS ||--o{ AUDIT_LOG : "future"
-  SMART_HOME_CATEGORIES ||--o{ SMART_HOME_DEVICES : has
-  SMART_HOME_DEVICES    ||--o{ SMART_HOME_VULNERABILITIES : has
-
-  USERS {
-    int id PK
-    varchar(254) email UK
-    varchar(255) passwordHash
-    enum role "admin | user"
-    timestamptz createdAt
-    timestamptz updatedAt
-  }
-  SMART_HOME_CATEGORIES {
-    int id PK
-    text name
-  }
-  SMART_HOME_DEVICES {
-    int id PK
-    text name
-    int categoryId FK
-  }
-  SMART_HOME_VULNERABILITIES {
-    int id PK
-    varchar cveId UK "nullable"
-    text vulnerability "AI-generated"
-    text impact        "AI-generated"
-    text affectedSystem "AI-generated"
-    text threats       "AI-generated"
-    text recommendations "AI-generated"
-    text lastModified "nullable"
-    text vulnStatus   "nullable"
-    json metrics       "CvssMetrics[]"
-    text references    "simple-array"
-    int deviceId FK
-  }
+    smart_home_categories ||--o{ smart_home_devices : has
+    smart_home_devices ||--o| smart_home_vulnerabilities_cache : cached_by
+    smart_home_categories {
+        int id PK
+        text slug UK
+        text name
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    smart_home_devices {
+        int id PK
+        text slug UK
+        text name
+        text vendor
+        text product
+        text cpe_name
+        real cpe_confidence
+        timestamptz cpe_resolved_at
+        int category_id FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    smart_home_vulnerabilities_cache {
+        int device_id PK, FK
+        jsonb payload
+        text match_source
+        text match_query
+        real cpe_confidence
+        timestamptz fetched_at
+    }
+    catalog_metadata {
+        int id PK
+        timestamptz last_refresh_at
+        text source_version
+        int error_count
+        text last_error
+        timestamptz updated_at
+    }
+    smart_home_clients {
+        uuid id PK
+        text fingerprint_hash UK
+        text client_id_header
+        inet ip_last
+        text user_agent_last
+        text accept_language
+        bigint request_count
+        text status
+        text status_reason
+        timestamptz status_changed_at
+        int strike_count
+        timestamptz throttle_until
+        timestamptz first_seen_at
+        timestamptz last_seen_at
+    }
 ```
 
-- All foreign keys cascade on delete.
-- `USERS.email` is stored lower-cased and uniquely indexed.
-- `SMART_HOME_VULNERABILITIES.cveId` is unique; ingestion skips CVEs already present for a device.
+Notes:
 
-## Request flow — `GET /v1/vulnerabilities?keywordSearch=<device>`
+- `smart_home_vulnerabilities_cache` stores the fully-enriched response as a JSONB blob. This trades normalization for simplicity: the API always reads/writes the whole record for a device.
+- `smart_home_clients` grows one row per unique request fingerprint. In a large deployment you'd want a cleanup job for rows that haven't been seen in N days; that's not implemented.
+
+## Request flow: `GET /v1/vulnerabilities?slug=<slug>`
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    participant B as Browser
-    participant W as Next.js
-    participant A as NestJS API
-    participant PG as PostgreSQL
+    participant W as Web
+    participant M as ClientRegistryMiddleware
+    participant T as ClientThrottlerGuard
+    participant V as VulnerabilitiesService
+    participant DB as Postgres
     participant N as NIST NVD
-    participant O as OpenAI
+    participant O as Ollama
 
-    B->>W: user picks device
-    W->>A: GET /v1/vulnerabilities?keywordSearch=router<br/>Authorization: Bearer <jwt>
-    A->>A: JwtAuthGuard + Throttler (10/min)
-    A->>PG: find device by name
-    alt device missing
-      A-->>W: 404 NotFound
-    else device found
-      A->>N: GET /rest/json/cves/2.0?keywordSearch=router
-      loop for each new CVE
-        A->>PG: exists cveId?
-        A->>O: 5× chat.completions (Promise.all)
-        A->>PG: save Vulnerability
-      end
-      A->>PG: find vulnerabilities where device.id
-      A-->>W: 200 [Vulnerability]
+    W->>M: GET /v1/vulnerabilities?slug=...
+    M->>DB: upsert client by fingerprint hash
+    M-->>W: 403 if client.status == 'blacklisted'
+    M->>T: attach client to req
+    T->>T: check per-client rate (60/min default, 10/min for /vulnerabilities)
+    T->>V: pass through
+    V->>DB: SELECT cache WHERE device_id
+    alt cache fresh (< CVE_CACHE_MINUTES)
+        V-->>W: 200 JSON (cached=true)
+    else cache stale or missing
+        V->>DB: SELECT device WHERE slug
+        V->>N: GET /cves/2.0?cpeName=... OR keywordSearch=...
+        loop each CVE
+            V->>O: POST /chat/completions (JSON mode, qwen2.5:3b)
+            O-->>V: {vulnerability, threats, impact, affectedSystem, recommendations}
+        end
+        V->>DB: UPSERT cache (only if any AI field is non-empty)
+        V-->>W: 200 JSON (cached=false)
     end
 ```
 
-- Every request gets an `x-request-id` (correlated in logs).
-- 5xx errors are captured to Sentry when `SENTRY_DSN` is set.
-- The `strict` throttler on `/v1/vulnerabilities` (10 requests/minute) is deliberate — the endpoint fans out to 5 OpenAI calls per new CVE and is the most expensive path in the system.
+Behavioral details:
 
-## Runtime topology (containerized)
+- If NIST is unreachable and a stale cache row exists, the API serves the stale copy and logs a warning. Better than a 5xx.
+- If the LLM returns empty AI fields for every CVE (rare — usually a startup race where the model isn't loaded yet), the response is still returned but not written to cache. The next request retries the enrichment.
+- CPE resolution runs off the request path in `CatalogSyncService`. When resolution succeeds with confidence ≥ 0.5, the vulnerabilities service queries NIST by `cpeName` (precise match). Otherwise it falls back to `keywordSearch` and the UI shows an "approximate match" badge.
 
-```mermaid
-flowchart TB
-    subgraph Compose[docker-compose network: iot-deviceshield]
-      direction TB
-      Postgres[(postgres:16-alpine<br/>vol: postgres-data)]
-      Api[iot-deviceshield/api<br/>:3000 -> /v1/*]
-      Web[iot-deviceshield/web<br/>:3001]
-    end
-    Public[Public traffic] -->|3001| Web
-    Web -->|internal DNS| Api
-    Api -->|5432| Postgres
-```
+## Startup sequence
 
-Both containers run as non-root (`app` user), with `no-new-privileges` and `cap_drop: ALL` set in Compose. Health probes hit `/v1/health` (API) and `/` (web). Postgres uses `pg_isready` for its healthcheck; API `depends_on` postgres with `condition: service_healthy`.
+Docker Compose brings up postgres, ollama, ollama-model-pull (sidecar), api, and web. The sidecar pulls the model tag if not already present, then exits. The API `depends_on` the sidecar's `service_completed_successfully`, guaranteeing the model exists before the API starts calling for it.
 
-## Tooling & DX
+At API boot:
 
-| Concern         | Choice                       | Notes                                                                                         |
-| --------------- | ---------------------------- | --------------------------------------------------------------------------------------------- |
-| Package manager | **pnpm 9**                   | Fast, disk-efficient; strict about peer deps.                                                 |
-| Monorepo runner | **Turborepo**                | `^build` graph ensures `packages/types` builds before consumers.                              |
-| Language        | TypeScript 5, `strict: true` | See [`packages/tsconfig/base.json`](../packages/tsconfig/base.json).                          |
-| API framework   | NestJS 10                    | Modules, DI, class-validator DTOs.                                                            |
-| ORM             | TypeORM 0.3                  | Migrations checked in under `apps/api/src/migrations`.                                        |
-| Auth            | JWT (Passport) + argon2id    | `JwtAuthGuard`, `RolesGuard`, `@Roles()` decorator.                                           |
-| Rate limiting   | `@nestjs/throttler`          | Global 100/min, strict 10/min on vulnerabilities, 20/min on auth.                             |
-| Logging         | `nestjs-pino`                | Structured JSON in prod, pretty in dev. Redacts auth headers and passwords.                   |
-| Errors          | Global `AllExceptionsFilter` | Sanitizes 5xx, forwards to Sentry.                                                            |
-| Frontend        | Next.js 14 App Router        | `output: 'standalone'` for Docker image.                                                      |
-| UI              | Material UI 6                | CSS Modules for layout.                                                                       |
-| CI              | GitHub Actions               | Lint / typecheck / test / `pnpm audit` / **Semgrep** / **Gitleaks** / **CodeQL** / **Trivy**. |
-| Dep updates     | Dependabot                   | Weekly, grouped by ecosystem.                                                                 |
+1. TypeORM connects and runs migrations.
+2. `CatalogSyncService.onApplicationBootstrap()` reads `packages/catalog/src/catalog.json`, upserts categories and devices, then loops through devices whose CPE isn't resolved (or is stale) and queries NIST's CPE dictionary. This takes 5–15 seconds on a fresh boot.
+3. NestJS starts accepting requests.
 
 ## Security posture
 
-Enforced at code and pipeline levels:
+The security model matches the fact that this is a personal / research project running locally, not a hosted multi-tenant service.
 
-- **Env validation on boot** ([env.schema.ts](../apps/api/src/config/env.schema.ts)) — missing `JWT_SECRET` (min 32 chars), `OPENAI_API_KEY`, or DB creds → the process exits with a diff-style error.
-- **CORS** restricted to `FRONTEND_URL`.
-- **Helmet** for standard response headers (X-Frame-Options, HSTS, CSP defaults, etc.).
-- **Password storage** via `argon2id` (`argon2.hash` with default OWASP-recommended params).
-- **JWT** signed with an operator-supplied secret; expiry via `JWT_EXPIRES_IN`.
-- **Guards** on every mutating endpoint (`POST/DELETE /v1/{category,devices}` require `admin`).
-- **Rate limits** protect the expensive AI path.
-- **`synchronize: true`** only in non-production; prod uses TypeORM migrations.
-- **`pnpm audit`, Semgrep, Gitleaks, CodeQL, Trivy** run on every PR and merge.
-- **Non-root containers**, `cap_drop: ALL`, `no-new-privileges`.
-- **Full [SECURITY.md](../SECURITY.md)** covers threat model and disclosure.
+- No user auth. Every unauthenticated request is fingerprint-registered so the throttler can apply per-client limits and a manual block-list.
+- Admin surface (catalog refresh, blocklist management) is gated by a static bearer token (`ADMIN_API_TOKEN`) compared with `timingSafeEqual`.
+- Helmet + CORS restricted to `FRONTEND_URL`.
+- Nest global exception filter sanitizes error responses; stack traces never leak to clients.
+- Structured JSON logs via `nestjs-pino` with a redact list for the usual sensitive headers.
+- Non-root container users, `no-new-privileges`, and `cap_drop: ALL` in `docker-compose.yml`.
+- Sentry on the web (opt-in via DSN). Nothing on the API by default because the interesting failure modes surface in logs.
 
-## Extension points
+## Trade-offs and things that were deliberately not built
 
-- **Add another AI provider** → replace `openAI.chat.completions.create` with a small `AiProvider` interface behind DI; keep the existing 5-prompt structure.
-- **Multi-tenant** → add `organizationId` to `User`, `Category`, `Device`; scope every query in the services. Migration required.
-- **CVE severity email digest** → new `AlertsModule` with a cron job (`@nestjs/schedule`) that queries `Vulnerability` by severity and dispatches to a mail provider.
-- **Non-Postgres deployments** → the TypeORM datasource is the only place that knows the driver; swapping is a config change plus a fresh migration set.
+- **No login.** Adding auth would let us do per-user quotas and personalization, but the product is a lookup tool for a curated catalog. There's nothing to personalize.
+- **The AI enrichment cache is coarse (per device, not per CVE).** A device is refreshed or not. Refreshing one CVE independently would be more efficient but adds complexity that's not warranted at this scale.
+- **CPE scoring is heuristic** (vendor + product token match, prefer `part=h` for hardware, 0–1 confidence). Good enough to distinguish "clean hit" from "noise". A better system would use NIST's exact-match CPE lookup on a canonical device identifier if we had one.
+- **Sequential CVE enrichment.** With a hosted LLM you'd fan out to N parallel calls with backoff. With a local Ollama server, the model is a shared single-process resource, so parallel calls don't help; sequential is honest.
+- **No user management / no data export / no scheduled reports.** The scope is "look up devices; see enriched CVEs".
+
+## Where to extend
+
+- **Different device catalog.** Edit `packages/catalog/src/catalog.json`. The Zod schema validates on load. New devices trigger a CPE resolution on next sync.
+- **Different LLM.** Change `OLLAMA_MODEL`. Any Ollama-supported chat model with reasonable JSON-following will work.
+- **Different LLM provider.** `AiAssistantService` is a thin wrapper around the `openai` client with a redirected `baseURL`. Point at any OpenAI-compatible endpoint (LM Studio, vLLM, hosted providers) by changing `OLLAMA_HOST`.
+- **Persistent audit log for admin actions.** Currently the client blacklist stores a `status_reason` but not a full audit trail. Adding a small `admin_events` table would be a 30-minute change.

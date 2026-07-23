@@ -1,168 +1,125 @@
-# Setup guide
+# Local development setup
+
+This guide covers what you need to run the project on your laptop. It assumes you have Docker and Node.js already installed.
 
 ## Prerequisites
 
-| Tool       | Version                 | Install                                                                                       |
-| ---------- | ----------------------- | --------------------------------------------------------------------------------------------- |
-| Node.js    | **22.22.2** LTS ("Jod") | Use [nvm](https://github.com/nvm-sh/nvm): `nvm install && nvm use` picks it up from `.nvmrc`. |
-| pnpm       | **10+**                 | `corepack enable && corepack prepare pnpm@10.14.0 --activate`                                 |
-| Docker     | 24+                     | Only required for `pnpm docker:up`.                                                           |
-| PostgreSQL | 16                      | Only if you want to run without Docker; otherwise Compose provides it.                        |
+| Tool                 | Version                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| Docker Desktop or CE | Any recent version with Compose v2                                                                   |
+| Node.js              | 22.22.2 LTS (pinned in `.nvmrc`; `nvm use` picks it up)                                              |
+| pnpm                 | 10.14.0 (matches `packageManager` in `package.json`; Corepack handles this automatically if enabled) |
+| Free disk            | ~6 GB (Postgres image + Ollama image + Qwen 2.5 3B model)                                            |
+| RAM                  | 8 GB minimum; 16 GB recommended (the LLM uses ~2 GB when loaded)                                     |
 
-## Fastest path: full stack via Docker
+Optional: an NIST NVD API key ([free, one-minute registration](https://nvd.nist.gov/developers/request-an-api-key)) raises the rate limit from 5 requests / 30 s to 50 / 30 s.
+
+## First-time setup
 
 ```bash
 git clone https://github.com/josebright/iot-deviceshield.git
 cd iot-deviceshield
 cp .env.example .env
-# open .env and set DB_PASSWORD, JWT_SECRET (>=32 chars), OPENAI_API_KEY
-pnpm install
-pnpm docker:up
 ```
 
-That's it. When Compose reports both services healthy:
-
-- API — <http://localhost:3000/v1>
-- API health — <http://localhost:3000/v1/health>
-- API docs (Swagger) — <http://localhost:3000/v1/docs>
-- Web — <http://localhost:3001>
-
-Teardown (including the postgres volume):
+Two required values in `.env`:
 
 ```bash
-pnpm docker:down
+DB_PASSWORD=<pick a password>
+ADMIN_API_TOKEN=<generate with: openssl rand -hex 32>
 ```
 
-Tail logs from all services:
+Then start the stack:
 
 ```bash
-pnpm docker:logs
+docker compose --env-file .env -f infra/docker/docker-compose.yml up -d
 ```
 
-## Local dev without Docker
+First boot does three things you'll see in the logs:
 
-Suitable when you want live reload and are running your own Postgres.
+1. Postgres starts and becomes healthy.
+2. The Ollama container pulls its image (~1 GB).
+3. A sidecar container asks Ollama to pull the Qwen 2.5 3B model (~1.9 GB). This is the slow part; expect 5–10 minutes on a normal home connection.
 
-1. Start Postgres locally, create a database and user matching your `.env`.
-2. Install deps and run both apps:
+Once the sidecar finishes, the API boots and runs its startup catalog sync (upserts the 18 seed devices, resolves NIST CPE identifiers where possible). You'll see something like:
 
-```bash
-pnpm install
-pnpm dev                                # runs turbo dev across all workspaces
-# or, per app:
-pnpm --filter @iot-deviceshield/api dev
-pnpm --filter @iot-deviceshield/web dev
+```text
+catalog sync done in Nms: categories=5 devices=18 cpe=8
+IoT-DeviceShield API listening on http://localhost:3000/v1
 ```
 
-The API runs on `:3000`, the web on `:3001`. Both watch for changes.
+At that point, open [http://localhost:3001](http://localhost:3001).
 
 ## Environment variables
 
-Every var, its purpose, and whether it's required is documented in [`.env.example`](../.env.example). At startup the API validates them against the [Zod schema](../apps/api/src/config/env.schema.ts); any missing or malformed var causes a fail-fast boot with a readable diff.
+Full list is in `.env.example`. Highlights:
 
-Generate a strong `JWT_SECRET`:
+| Variable                         | Default               | Purpose                                                                                              |
+| -------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------- |
+| `DB_PASSWORD`                    | (required)            | Postgres user password.                                                                              |
+| `ADMIN_API_TOKEN`                | (required, ≥32 chars) | Bearer token that guards `/v1/admin/*` and `/v1/catalog/*` mutation routes.                          |
+| `AI_ENABLED`                     | `true`                | Set to `false` to skip AI enrichment entirely (CVE data still returns).                              |
+| `OLLAMA_HOST`                    | `http://ollama:11434` | Where the API reaches Ollama. Use `http://host.docker.internal:11434` for host-native Ollama on Mac. |
+| `OLLAMA_MODEL`                   | `qwen2.5:3b`          | Model tag Ollama pulls and serves.                                                                   |
+| `NVD_API_KEY`                    | (empty)               | Optional, raises NIST rate limit.                                                                    |
+| `CVE_CACHE_MINUTES`              | `30`                  | Per-device CVE cache TTL.                                                                            |
+| `CPE_RESOLVE_TTL_DAYS`           | `30`                  | How stale a CPE resolution can be before refresh.                                                    |
+| `CLIENT_RATE_LIMIT_PER_MIN`      | `60`                  | Per-client rate limit (fingerprint-keyed).                                                           |
+| `CLIENT_VULN_RATE_LIMIT_PER_MIN` | `10`                  | Per-client rate limit for `/v1/vulnerabilities`.                                                     |
+| `SENTRY_DSN`                     | (empty)               | If unset, Sentry is a no-op.                                                                         |
 
-```bash
-openssl rand -base64 48
-```
+## Running without Docker (iterative dev)
 
-## Database
-
-### Development
-
-`app.module.ts` sets `synchronize: NODE_ENV !== 'production'` — so the schema auto-syncs from entity metadata every boot in dev.
-
-### Production
-
-- `synchronize` is **off**.
-- Ship schema changes as migrations under `apps/api/src/migrations/`.
-- Migrations run manually (or in a deploy hook):
-
-```bash
-pnpm --filter @iot-deviceshield/api migration:run
-pnpm --filter @iot-deviceshield/api migration:show
-pnpm --filter @iot-deviceshield/api migration:revert    # rolls back one
-```
-
-### Creating a new migration
-
-Edit an entity, then generate a migration that captures the diff against the live schema:
+If you prefer to run the API in watch mode against a containerized Postgres and Ollama:
 
 ```bash
-pnpm --filter @iot-deviceshield/api migration:generate src/migrations/<Name>
+docker compose --env-file .env -f infra/docker/docker-compose.yml up -d postgres ollama ollama-model-pull
+
+pnpm install
+pnpm --filter @iot-deviceshield/types build
+pnpm --filter @iot-deviceshield/catalog build
+
+# API in one terminal:
+DB_HOST=127.0.0.1 OLLAMA_HOST=http://127.0.0.1:11434 pnpm --filter @iot-deviceshield/api dev
+
+# Web in another:
+pnpm --filter @iot-deviceshield/web dev
 ```
 
-Review the generated `up()` / `down()` for anything TypeORM inferred incorrectly, then commit.
+## Running Ollama natively (macOS speed tip)
 
-### Seed demo data
+Docker Desktop on macOS cannot pass through the Metal GPU. Inference in the container is CPU-only, which is workable but slow. If you're on Apple Silicon and want fast responses, install Ollama on the host:
 
 ```bash
-pnpm --filter @iot-deviceshield/api exec ts-node src/scripts/seed.ts
+brew install ollama
+ollama serve &
+ollama pull qwen2.5:3b
 ```
 
-## Authentication smoke test
+Then point the API at the host by setting in `.env`:
 
 ```bash
-# Register (returns 201 with JWT)
-curl -sX POST http://localhost:3000/v1/auth/register \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"an-appropriately-strong-password"}' | jq
-
-# Login (returns 200 with JWT)
-TOKEN=$(curl -sX POST http://localhost:3000/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"an-appropriately-strong-password"}' \
-  | jq -r .accessToken)
-
-# Public endpoint — no auth
-curl -s http://localhost:3000/v1/category | jq
-
-# Admin-only mutation — requires JWT with role=admin
-curl -sX POST http://localhost:3000/v1/category \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"name":"Cameras"}' | jq
-# → 403 unless your user is admin. Promote via SQL:
-#   UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+OLLAMA_HOST=http://host.docker.internal:11434
 ```
+
+And remove (or scale to zero) the `ollama` and `ollama-model-pull` services in `infra/docker/docker-compose.yml`.
+
+## Common pitfalls
+
+- **Model pull "hangs" on first boot.** It's downloading ~1.9 GB, not hanging. Watch it with `docker compose --env-file .env -f infra/docker/docker-compose.yml logs -f ollama-model-pull`.
+- **`ADMIN_API_TOKEN must be at least 32 characters`.** Generate with `openssl rand -hex 32`.
+- **First `/v1/vulnerabilities` request takes 30–120 seconds.** Ollama is generating enrichment for every CVE the first time. Subsequent hits within `CVE_CACHE_MINUTES` are served from the DB cache in milliseconds.
+- **All CVE enrichment fields come back empty.** Check `docker compose logs api | grep ollama`. Common causes: model isn't pulled yet, `OLLAMA_HOST` is wrong, `AI_ENABLED=false`.
 
 ## Common commands
 
 ```bash
-pnpm dev                    # all apps in watch mode
-pnpm build                  # production build across workspaces
-pnpm test                   # unit tests across workspaces
-pnpm typecheck              # strict tsc across workspaces
-pnpm lint                   # eslint (with --fix)
-pnpm format                 # prettier --write
-pnpm format:check           # prettier --check (CI-friendly)
-pnpm docker:up              # bring up full stack
-pnpm docker:down            # tear down + wipe volumes
-pnpm docker:logs            # tail all container logs
+pnpm docker:up          # start the whole stack (foreground)
+pnpm docker:down        # stop everything and drop volumes (fresh start)
+pnpm docker:rebuild     # rebuild images without cache and restart
+pnpm docker:logs        # tail logs
+
+pnpm typecheck          # tsc --noEmit everywhere
+pnpm lint               # eslint / next lint everywhere
+pnpm test               # jest suites
 ```
-
-## Repository setup on GitHub
-
-For the CI pipeline to work end-to-end and the security signals to reach the Security tab, do these once after pushing to GitHub:
-
-1. **Settings → Code security and analysis**
-   - Enable **Dependabot alerts** and **Dependabot security updates**
-   - Enable **Code scanning** (uses CodeQL from `ci.yml`)
-   - Enable **Secret scanning** and **Push protection**
-   - Enable **Private vulnerability reporting**
-2. **Settings → Branches → Add branch protection rule** for `main`:
-   - Require a pull request before merging
-   - Require **1 review** approval
-   - Require status checks to pass: **`CI gate`**
-   - Require branches to be up to date
-   - Require conversation resolution
-3. **Settings → Actions → General**
-   - Restrict workflow permissions to **read repository contents** (the CI file requests write only where it needs it via `permissions:` blocks).
-
-## Troubleshooting
-
-- **`ECONNREFUSED postgres:5432` from the API container** — Postgres hasn't finished starting yet; Compose's `depends_on: service_healthy` should handle this, but on cold boots the retry can take ~30 s.
-- **`Invalid environment configuration` on startup** — the Zod schema tells you exactly which var is missing or malformed; fix `.env` and restart.
-- **Web app boots but categories won't load** — check `NEXT_PUBLIC_API_URL` and that CORS `FRONTEND_URL` on the API matches the origin your browser is using.
-- **`pnpm audit` fails in CI with a high CVE** — bump the offending dep or, if it's a transitive that upstream hasn't patched, add a `pnpm.overrides` entry in the root `package.json` (with a code comment linking to the CVE).
-- **Trivy CI job fails on a base-image CVE** — bump `ARG NODE_VERSION` in the affected Dockerfile.
